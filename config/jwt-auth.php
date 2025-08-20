@@ -4,16 +4,16 @@ return [
     "access" => [
         "secret" => env("JWT_SECRET"),
         "algorithm" => "HS256",
-        "ttl" => 60
+        "ttl" => 3
     ],
     "refresh" => [
         "secret" => env("REFRESH_SECRET"),
         "algorithm" => "HS256",
-        "ttl" => 604800
+        "ttl" => 10080
     ],
     "csrf" => [
         "secret" => env("CSRF_SECRET"),
         "algorithm" => "HS256",
-        "ttl" => 86400
+        "ttl" => 1440
     ]
 ];

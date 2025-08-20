@@ -9,7 +9,7 @@ use Firebase\JWT\Key;
 class JwtService
 {
 
-    public static function generateToken($user, $type = "access", $customPayload = null)
+    public static function generateToken($payload, $type = "access")
     {
         $config = config("jwt-auth.$type");
 
@@ -18,12 +18,7 @@ class JwtService
             'exp' => Carbon::now()->addMinutes($config['ttl'])->timestamp,
         ];
 
-        $payload = $customPayload ?? [
-            'sub' => $user->id,
-            'email' => $user->email
-        ];
-
-        $payload = array_merge($payload, $token_time) ;
+        $payload = array_merge($token_time, $payload);
 
         return JWT::encode($payload, $config['secret'], $config['algorithm']);
     }
@@ -39,5 +34,19 @@ class JwtService
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    public static function decodeJwt(string $jwt)
+    {
+        $parts = explode('.', $jwt);
+
+        if (count($parts) !== 3) {
+            return null;
+        }
+
+        $payload = $parts[1];
+        $decoded = base64_decode(strtr($payload, '-_', '+/'));
+
+        return json_decode($decoded, true);
     }
 }
