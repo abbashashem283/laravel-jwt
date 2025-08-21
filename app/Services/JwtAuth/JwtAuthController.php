@@ -3,6 +3,7 @@
 namespace App\Services\JwtAuth;
 
 use App\Http\Controllers\Controller;
+use App\Services\JwtAuth\users\enums\UserAuthStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -16,6 +17,14 @@ class JwtAuthController extends Controller
         if (!$tokens)
             return response()->json(['error' => 'Could not log in'], 401);
         return response()->json($tokens);
+    }
+
+    public function logout(Request $request){
+        auth()->user();
+        $invalidate = auth()->invalidate(UserAuthStatus::REVOKED->value);
+        if(!$invalidate)
+            return response("attempt failed", 409);
+        return response("ok", 200);
     }
 
     public function refresh()

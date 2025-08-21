@@ -2,6 +2,7 @@
 
 namespace App\Services\JwtAuth;
 
+use App\Models\AuthRevokes;
 use App\Services\JwtAuth\users\enums\UserAuthStatus;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
@@ -31,9 +32,10 @@ class JwtGuard implements Guard
         if(!$token) return null;
         $payload = $this->validateTokens(["access"=>$token])["access"];
         if (!$payload) return null;
-        $this->user = $this->provider->retrieveById($payload->sub);
-        if(!$this->user || $this->user->authRevoke) 
+        $user = $this->provider->retrieveById($payload->sub);
+        if(!$user || $user->authRevoke) 
             return null;
+        $this->user = $user ;
         return $this->user;
     }
 
@@ -113,6 +115,16 @@ class JwtGuard implements Guard
         }
 
         return false;
+    }
+
+    public function invalidate($type){
+        if(!$this->hasUser())
+            return false;
+        AuthRevokes::create([
+            "user_id"=>$this->user->id,
+            "status"=>$type
+        ]);
+        return true;
     }
 
     public function getProvider() {
