@@ -14,7 +14,7 @@ class JwtAuthController extends Controller
         $credentials = $request->only('email', 'password');
         $tokens = auth()->attempt($credentials);
         if (!$tokens)
-            return response()->json(['error' => 'Invalid credentials'], 401);
+            return response()->json(['error' => 'Could not log in'], 401);
         return response()->json($tokens);
     }
 
@@ -24,6 +24,11 @@ class JwtAuthController extends Controller
         if(!$tokens)
             return response('Unauthorized', 401);
         return response()->json($tokens);
+    }
+
+    public function user(){
+        $user = auth()->user();
+        return response()->json(compact('user'));
     }
 
     public function greet(Request $request)

@@ -45,4 +45,8 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function authRevoke(){
+        return $this->hasOne(AuthRevokes::class);
+    }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Services\JwtAuth;
 
-
+use App\Services\JwtAuth\users\enums\UserAuthStatus;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Auth\UserProvider;
@@ -28,9 +28,12 @@ class JwtGuard implements Guard
     {
         if ($this->user) return $this->user;
         $token = $this->request->bearerToken();
-        $payload = JwtService::validateToken($token);
+        if(!$token) return null;
+        $payload = $this->validateTokens(["access"=>$token])["access"];
         if (!$payload) return null;
         $this->user = $this->provider->retrieveById($payload->sub);
+        if(!$this->user || $this->user->authRevoke) 
+            return null;
         return $this->user;
     }
 
@@ -94,7 +97,18 @@ class JwtGuard implements Guard
     public function attempt(array $credentials = [])
     {
         if ($this->validate($credentials)) {
-            $this->setUser($this->provider->retrieveByCredentials($credentials));
+            $user = $this->provider->retrieveByCredentials($credentials);
+            $authRevocation = $user->authRevoke ;
+            if($authRevocation){
+                switch($authRevocation->status){
+                    case UserAuthStatus::DENIED->value :
+                        return false;
+                    case UserAuthStatus::REVOKED->value :
+                        $user->authRevoke->delete();
+
+                }
+            }
+            $this->setUser($user);
             return $this->generateTokens();
         }
 
@@ -125,11 +139,15 @@ class JwtGuard implements Guard
         $accessToken = $this->request->bearerToken();
         $refreshToken = $this->request->refresh_token;
 
+        if(!$accessToken || !$refreshToken)
+            return null;
 
-        $refreshPayload = $this->validate(["tokens" => ["refresh" => $refreshToken]])["refresh"];
+        $validatedTokens = $this->validate(["tokens" => ["refresh" => $refreshToken]]);
+
+        $refreshPayload = $validatedTokens["refresh"];
 
 
-        if(!$refreshPayload || !$accessToken)
+        if(!$refreshPayload)
             return null;
 
         $expiredAccessPayload = JwtService::decodeJwt($accessToken);

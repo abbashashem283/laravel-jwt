@@ -9,6 +9,7 @@ Route::prefix("auth")->controller(AuthController::class)->group(
         Route::post("/login","login")->name("auth.login");
         Route::post("/refresh","refresh")->name("auth.refresh");
         Route::get("/hi", "greet");
+        Route::get("/user", "user")->name("auth.user");
     }
 
    

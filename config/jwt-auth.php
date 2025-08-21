@@ -4,7 +4,7 @@ return [
     "access" => [
         "secret" => env("JWT_SECRET"),
         "algorithm" => "HS256",
-        "ttl" => 3
+        "ttl" => 60
     ],
     "refresh" => [
         "secret" => env("REFRESH_SECRET"),
