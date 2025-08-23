@@ -33,7 +33,7 @@ class JwtGuard implements Guard
         $payload = $this->validateTokens(["access"=>$token])["access"];
         if (!$payload) return null;
         $user = $this->provider->retrieveById($payload->sub);
-        if(!$user || $user->authRevoke) 
+        if(!$user || !$user->email_verified_at  || $user->authRevoke) 
             return null;
         $this->user = $user ;
         return $this->user;

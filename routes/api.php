@@ -9,6 +9,8 @@ Route::prefix("auth")->controller(AuthController::class)->group(
         Route::post("/login","login")->name("auth.login");
         Route::post("/logout","logout")->name("auth.logout");
         Route::post("/refresh","refresh")->name("auth.refresh");
+        Route::post("/register","register")->name("auth.register");
+        Route::get("/verify","verify")->name("auth.verify");
         Route::get("/hi", "greet");
         Route::get("/user", "user")->name("auth.user");
     }

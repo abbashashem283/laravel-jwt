@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'email_verified_at'
     ];
 
     /**
@@ -48,5 +49,9 @@ class User extends Authenticatable
 
     public function authRevoke(){
         return $this->hasOne(AuthRevokes::class);
+    }
+
+    public function emailVerificationToken(){
+        return $this->hasOne(EmailVerificationTokens::class);
     }
 }
