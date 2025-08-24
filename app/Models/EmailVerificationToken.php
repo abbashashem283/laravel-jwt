@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class EmailVerificationTokens extends Model
+class EmailVerificationToken extends Model
 {
     public $timestamps = false;
 

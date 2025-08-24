@@ -17,10 +17,13 @@ return [
         "ttl" => 1440
     ],
     "email_verification" => [
-        "ttl" => 1
+        "ttl" => 10
+    ],
+    "reset_password" => [
+        "ttl" => 10
     ],
     "mail_service_views" => [
-        "email_verification",
-        "password_reset"
+        "emailVerification"=>"auth.email_verification",
+        "passwordReset"=>"auth.password_reset"
     ]
 ];

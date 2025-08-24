@@ -48,10 +48,14 @@ class User extends Authenticatable
     }
 
     public function authRevoke(){
-        return $this->hasOne(AuthRevokes::class);
+        return $this->hasOne(AuthRevoke::class);
     }
 
     public function emailVerificationToken(){
-        return $this->hasOne(EmailVerificationTokens::class);
+        return $this->hasOne(EmailVerificationToken::class);
+    }
+
+    public function resetPasswordToken(){
+        return $this->hasOne(ResetPasswordToken::class);
     }
 }

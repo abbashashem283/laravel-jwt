@@ -2,7 +2,7 @@
 
 namespace App\Services\JwtAuth;
 
-use App\Models\AuthRevokes;
+use App\Models\AuthRevoke;
 use App\Services\JwtAuth\users\enums\UserAuthStatus;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
@@ -118,9 +118,10 @@ class JwtGuard implements Guard
     }
 
     public function invalidate($type){
+        $this->user();
         if(!$this->hasUser())
             return false;
-        AuthRevokes::create([
+        AuthRevoke::create([
             "user_id"=>$this->user->id,
             "status"=>$type
         ]);
