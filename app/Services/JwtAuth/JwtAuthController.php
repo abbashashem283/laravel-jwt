@@ -17,6 +17,13 @@ use Illuminate\Support\Str;
 class JwtAuthController extends Controller
 {
 
+    protected $model;
+
+    public function __construct()
+    {
+        $this->model = config("auth.providers.users.model");
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->only('email', 'password');
@@ -26,9 +33,10 @@ class JwtAuthController extends Controller
         return response()->json($tokens);
     }
 
-    public function logout(Request $request){
+    public function logout(Request $request)
+    {
         $invalidate = auth()->invalidate(UserAuthStatus::REVOKED->value);
-        if(!$invalidate)
+        if (!$invalidate)
             return response("attempt failed", 409);
         return response("ok", 200);
     }
@@ -36,23 +44,24 @@ class JwtAuthController extends Controller
     public function refresh()
     {
         $tokens = auth()->refreshTokens();
-        if(!$tokens)
+        if (!$tokens)
             return response('Unauthorized', 401);
         return response()->json($tokens);
     }
 
-    public function user(){
+    public function user()
+    {
         $user = auth()->user();
         return response()->json(compact('user'));
     }
 
     public function greet(Request $request)
-    {   
+    {
         $at = $request->query("at");
         return auth()->validate(["tokens" => ["access" => $at]]);
     }
 
-        public function register(Request $request)
+    public function register(Request $request)
     {
 
         $validatedData = $request->validate([
@@ -65,7 +74,7 @@ class JwtAuthController extends Controller
         // Hash the password before creating the user
         $validatedData['password'] = Hash::make($validatedData['password']);
 
-        $user = User::create($validatedData);
+        $user = $this->model::create($validatedData);
 
         if (!$user) {
             return response("Could not create user", 500);
@@ -81,14 +90,13 @@ class JwtAuthController extends Controller
         $expirationTime = $currentTime + $tokenTTL;
 
         EmailVerificationToken::where("user_email", $user->email)
-                ->delete();
+            ->delete();
 
         // Create the token record and link it to the user
         EmailVerificationToken::create([
             'user_id' => $user->id,
-            'user_email'=>$user->email,
+            'user_email' => $user->email,
             'token' => $hashedToken,
-            'iat' => $currentTime,
             'exp' => $expirationTime,
         ]);
 
@@ -96,126 +104,130 @@ class JwtAuthController extends Controller
         // Example: Mail::to($user->email)->send(new VerifyEmail($plainTextToken));
         $emailVerificationView = config("jwt-auth.mail_service_views.emailVerification");
         Mail::to($user->email)
-            ->send(new AuthMail($emailVerificationView , [
-                "subject" => "Email Confirmation", 
+            ->send(new AuthMail($emailVerificationView, [
+                "subject" => "Email Confirmation",
                 "props" => [
                     "link" => route("auth.verify", [
-                        "email"=>$user->email,
-                        "token"=>$plainTextToken
+                        "email" => $user->email,
+                        "token" => $plainTextToken
                     ])
                 ]
             ]));
 
-           
+
 
         return response()->json(["message" => "User registered. Email verification sent to $request->email"]);
         //return response("hi");
     }
 
-    public function verify(Request $request){
+    public function verify(Request $request)
+    {
         $token = $request->query("token");
         $email = $request->query("email");
-        if(!$token)
-            return response("Unauthorized",403);
+        if (!$token)
+            return response("Unauthorized", 403);
         $storedToken = EmailVerificationToken::where("user_email", $email)->first();
-        if(!$storedToken || !Hash::check($token, $storedToken->token))
-            return response("Unauthorized",403);
+        if (!$storedToken || !Hash::check($token, $storedToken->token))
+            return response("Unauthorized", 403);
         $tokenIsValid = Carbon::now()->timestamp < $storedToken->exp;
-        if(!$tokenIsValid)
-            return response("Expired Link",403);
-        $storedUser = User::where("email", $email)->first();
-        if(!$storedUser)
-            return response("Invalid User",403);
+        if (!$tokenIsValid)
+            return response("Expired Link", 403);
+        $storedUser = $this->model::where("email", $email)->first();
+        if (!$storedUser)
+            return response("Invalid User", 403);
         $storedUser->update([
-            "email_verified_at"=>Carbon::now()
+            "email_verified_at" => Carbon::now()
         ]);
         $storedToken->delete();
-        return response()->json(["message"=>"email verified successfully"]);
+        return response()->json(["message" => "email verified successfully"]);
     }
 
-    public function checkPasswordCode(Request $request){
+    public function checkPasswordCode(Request $request)
+    {
         $validatedData = $request->validate([
-            "email"=>"required|string|email",
-            "code"=>"required|string|size:6"
+            "email" => "required|string|email",
+            "code" => "required|string|size:6"
         ]);
-        $storedUser = User::where("email", $validatedData["email"])->first();
-        if(!$storedUser)
-            return response("User not found",404);
-        return $this->checkCode($storedUser, $validatedData["code"]) ;
+        $storedUser = $this->model::where("email", $validatedData["email"])->first();
+        if (!$storedUser)
+            return response("User not found", 404);
+        return $this->checkCode($storedUser, $validatedData["code"]);
     }
 
 
-    private function checkCode($user, $code){
-        $resetPasswordToken = $user->resetPasswordToken ;
-        if(!$resetPasswordToken)
-            return response("Unauthorized",403);
-        
-        $tokenExpired = Carbon::now()->timestamp > $resetPasswordToken->exp ;
-        if($tokenExpired)
+    private function checkCode($user, $code)
+    {
+        $resetPasswordToken = $user->resetPasswordToken;
+        if (!$resetPasswordToken)
+            return response("Unauthorized", 403);
+
+        $tokenExpired = Carbon::now()->timestamp > $resetPasswordToken->exp;
+        if ($tokenExpired)
             return response("Expired Link", 403);
         $tokenIsValid = Hash::check($code, $resetPasswordToken->token);
-        if(!$tokenIsValid)
-            return response("Unauthorized",403);
-        return response()->json(["message"=>"code is valid"]);
+        if (!$tokenIsValid)
+            return response("Unauthorized", 403);
+        return response()->json(["message" => "code is valid"]);
     }
 
-    public function resetPassword(Request $request){
+    public function resetPassword(Request $request)
+    {
         $validatedData = $request->validate([
-            "email"=>"required|string|email",
-            "code"=>"required|size:6",
-            "password"=>"required|string|min:8"
+            "email" => "required|string|email",
+            "code" => "required|size:6",
+            "password" => "required|string|min:8"
         ]);
-        $storedUser = User::where("email", $validatedData["email"])->first();
-        if(!$storedUser)
-            return response("User not found",404);
+        $storedUser = $this->model::where("email", $validatedData["email"])->first();
+        if (!$storedUser)
+            return response("User not found", 404);
 
         $checkCode = $this->checkCode($storedUser, $validatedData["code"]);
-        if($checkCode->getStatusCode() != 200)
+        if ($checkCode->getStatusCode() != 200)
             return $checkCode;
         $newPassword = Hash::make($validatedData["password"]);
         $storedUser->update([
-            "password"=>$newPassword
+            "password" => $newPassword
         ]);
         $storedUser->resetPasswordToken?->delete();
-        return response()->json(["message"=>"password updated!"]);
+        return response()->json(["message" => "password updated!"]);
     }
 
-    public function forgotPassword(Request $request){
+    public function forgotPassword(Request $request)
+    {
         $validatedData = $request->validate([
-            "email"=>"required|string|email"
+            "email" => "required|string|email"
         ]);
-        $email = $validatedData["email"] ;
-        $storedUser = User::where("email",$email)->first() ;
-        if(!$storedUser)
+        $email = $validatedData["email"];
+        $storedUser = $this->model::where("email", $email)->first();
+        if (!$storedUser)
             return response("user not found", 404);
 
         $token = Str::random(6);
         $hashedToken = Hash::make($token);
 
         $tokenTTL = config('jwt-auth.reset_password.ttl') * 60;
-        $exp = Carbon::now()->timestamp + $tokenTTL ;
+        $exp = Carbon::now()->timestamp + $tokenTTL;
 
         $storedUser->resetPasswordToken?->delete();
 
         ResetPasswordToken::create([
-            'user_id'=>$storedUser->id,
-            'user_email'=>$storedUser->email,
-            'token'=>$hashedToken,
-            'exp'=>$exp
+            'user_id' => $storedUser->id,
+            'user_email' => $storedUser->email,
+            'token' => $hashedToken,
+            'exp' => $exp
         ]);
 
         $passwordResetView = config("jwt-auth.mail_service_views.passwordReset");
         Mail::to($email)
             ->send(
                 new AuthMail($passwordResetView, [
-                    "subject"=>"Password Reset",
-                    "props"=>[
-                        "code"=>$token
+                    "subject" => "Password Reset",
+                    "props" => [
+                        "code" => $token
                     ]
                 ])
-        );
-        
-        return response()->json(["message"=>"code sent to $email"]);
-    }
+            );
 
+        return response()->json(["message" => "code sent to $email"]);
+    }
 }
